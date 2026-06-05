@@ -3,8 +3,8 @@
 
 /* ================== PINOS ================== */
 // Motor A
-const int motor_a_in1 = 32;
-const int motor_a_in2 = 18;
+const int motor_a_in1 = 18;
+const int motor_a_in2 = 32;
 
 // Motor B
 const int motor_b_in1 = 27;
