@@ -26,7 +26,6 @@ O objetivo é fornecer uma interface simples para testes, automação, robótica
 * Motores DC
 * Fonte de alimentação (entrada para LM2596 e MX1508)
 * Cabos de conexão
-* Capacitores de filtragem (conforme esquema)
 
 ---
 
