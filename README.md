@@ -21,23 +21,44 @@ O objetivo é fornecer uma interface simples para testes, automação, robótica
 # Hardware Necessário
 
 * ESP32
-* Ponte H compatível (L298N, BTS7960, MX1508 ou equivalente)
+* MX1508 (driver de motores DC)
+* LM2596 (regulador DC-DC com saída 5V)
 * Motores DC
-* Fonte de alimentação adequada para os motores
+* Fonte de alimentação (entrada para LM2596 e MX1508)
 * Cabos de conexão
+* Capacitores de filtragem (conforme esquema)
 
 ---
 
 # Ligações Utilizadas
 
-| Função      | GPIO ESP32 |
-| ----------- | ---------- |
-| Motor A IN1 | GPIO 18    |
-| Motor A IN2 | GPIO 32    |
-| Motor B IN1 | GPIO 27    |
-| Motor B IN2 | GPIO 26    |
+![alt text](esquemas/esquema1.png)
 
-> Caso utilize outra placa ou outro driver, os pinos podem ser alterados diretamente no código.
+## Alimentação
+
+| Componente | Entrada      | Saída      |
+| ---------- | ------------ | ---------- |
+| Fonte      | +V (variável) | GND        |
+| LM2596     | +V (6-40V)    | +5V (ESP32) |
+| MX1508     | +V (indep.)   | GND        |
+
+## Motores - Controle via MX1508
+
+| Função      | GPIO ESP32 | Pino MX1508 |
+| ----------- | ---------- | ----------- |
+| Motor A IN1 | GPIO 18    | IN1         |
+| Motor A IN2 | GPIO 32    | IN2         |
+| Motor B IN1 | GPIO 27    | IN3         |
+| Motor B IN2 | GPIO 26    | IN4         |
+
+## Observações
+
+* ESP32 alimentado pelo LM2596 (5V regulado)
+* Motores alimentados pelo MX1508 com fonte independente
+* Aterramento comum entre todos os componentes
+* Capacitores de filtragem conforme esquema fornecido
+
+> Caso utilize outro driver, os pinos podem ser alterados diretamente no código.
 
 ---
 
@@ -238,11 +259,13 @@ Exemplos:
 
 # Versões Disponíveis
 
-## esp32_motor_control_sliders_1
+## esp32_motor_control_sliders_1 - Controle por Sliders
+
+![Controle por Sliders](esp32_motor_control_sliders_1/image.png)
 
 ### Características
 
-* Controle por sliders.
+* Controle por sliders de velocidade.
 * Velocidade variável de 0 a 255.
 * Controle independente dos motores.
 * Interface simples e leve.
@@ -250,25 +273,33 @@ Exemplos:
 
 ### Funcionamento
 
-1. Selecione a direção.
+1. Selecione a direção (UP ou DOWN).
 2. Ajuste a velocidade usando o slider.
 3. O motor permanece funcionando até receber outro comando.
 
+### Vantagens
+
+* ✅ Controle suave e gradual da velocidade
+* ✅ Ideal para aplicações que exigem precisão
+* ✅ Interface minimalista e responsiva
+
 ---
 
-## esp32_web_motor_control_buttons_1
+## esp32_web_motor_control_buttons_1 - Controle por Botões
+
+![Controle por Botões](esp32_web_motor_control_buttons_1/image.png)
 
 ### Características
 
-* Controle por botões.
-* Velocidade rápida e lenta.
+* Controle por botões de direção e velocidade.
+* Velocidade rápida (255) e lenta (180).
 * Controle do tipo pressionar e segurar.
 * Botão de parada geral.
-* Interface otimizada para celulares.
+* Interface otimizada para celulares e touch.
 
 ### Funcionamento
 
-1. Pressione um botão.
+1. Pressione um botão (Frente Rápido, Frente Devagar, Ré Devagar ou Ré Rápido).
 2. O motor gira enquanto o botão estiver pressionado.
 3. Ao soltar o botão o motor para.
 
@@ -278,6 +309,54 @@ Exemplos:
 VEL_BAIXA = 180
 VEL_ALTA  = 255
 ```
+
+### Vantagens
+
+* ✅ Controle intuitivo e responsivo
+* ✅ Ideal para operação tátil em celulares
+* ✅ Botão de parada de emergência
+* ✅ Duas velocidades pré-configuradas
+
+---
+
+## esp32_web_motor_control_joystick_1 - Controle por Joystick Linear
+
+![Controle por Joystick](esp32_web_motor_control_joystick_1/image.png)
+
+### Características
+
+* Controle por joystick linear vertical.
+* Velocidade variável suave (0-255).
+* Controle contínuo com feedback visual.
+* Dois joysticks independentes (um para cada motor).
+* Interface inspirada em controladores de jogos.
+* Suporte a touch e mouse (desktop/mobile).
+
+### Funcionamento
+
+1. Deslize o joystick para cima = Frente (velocidade aumenta ao mover para cima).
+2. Deslize o joystick para baixo = Ré (velocidade aumenta ao mover para baixo).
+3. Libere para centro = Motor para.
+4. Feedback visual em tempo real da velocidade.
+
+### Vantagens
+
+* ✅ Controle suave e natural (similar a joystick analógico)
+* ✅ Feedback visual em tempo real
+* ✅ Ideal para operação contínua e precisa
+* ✅ Experiência semelhante a consoles de jogos
+* ✅ Funciona perfeitamente em dispositivos touch
+
+### Rota HTTP
+
+```text
+/joy?m=A&s=200&d=U
+```
+
+Parâmetros:
+- `m` : Motor (A ou B)
+- `s` : Velocidade (0-255)
+- `d` : Direção (U = Frente, D = Ré)
 
 ---
 

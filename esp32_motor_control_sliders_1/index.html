@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Controle ESP32 - Sliders</title>
+<style>
+body { 
+  font-family: Arial; 
+  text-align: center;
+  background: #1a1a2e;
+  color: white;
+  padding: 20px;
+}
+h2 {
+  color: #00d4ff;
+  margin: 20px 0 10px 0;
+}
+button { 
+  width: 100px; 
+  height: 40px; 
+  margin: 5px; 
+  font-size: 16px;
+  background: #0066cc;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+button:hover {
+  background: #0052a3;
+}
+button:active {
+  transform: scale(0.95);
+}
+input { 
+  width: 200px;
+  height: 30px;
+  margin: 10px 0;
+}
+.motor-section {
+  background: #16213e;
+  padding: 15px;
+  margin: 15px auto;
+  border-radius: 8px;
+  max-width: 400px;
+}
+</style>
+</head>
+<body>
+
+<h1>Motor Control - Sliders</h1>
+
+<div class="motor-section">
+  <h2>⚙️ Motor A</h2>
+  <button onclick="send('A','UP')">⬆️ UP</button>
+  <button onclick="send('A','DOWN')">⬇️ DOWN</button><br>
+  <label>Velocidade: <span id="speedA">0</span></label><br>
+  <input type="range" min="0" max="255" value="0"
+  oninput="sendSpeed('A', this.value); document.getElementById('speedA').innerText = this.value;">
+</div>
+
+<div class="motor-section">
+  <h2>⚙️ Motor B</h2>
+  <button onclick="send('B','UP')">⬆️ UP</button>
+  <button onclick="send('B','DOWN')">⬇️ DOWN</button><br>
+  <label>Velocidade: <span id="speedB">0</span></label><br>
+  <input type="range" min="0" max="255" value="0"
+  oninput="sendSpeed('B', this.value); document.getElementById('speedB').innerText = this.value;">
+</div>
+
+<script>
+function send(motor, dir)
+{
+    fetch(`/dir?m=${motor}&d=${dir}`);
+}
+
+function sendSpeed(motor, speed)
+{
+    fetch(`/speed?m=${motor}&s=${speed}`);
+}
+</script>
+
+</body>
+</html>

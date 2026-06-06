@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Controle Robô ESP32</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      background: #1a1a2e;
+      color: white;
+      font-family: 'Segoe UI', Arial, sans-serif;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    h1 {
+      font-size: 1.5em;
+      margin-bottom: 10px;
+      color: #00d4ff;
+      text-shadow: 0 0 10px #00d4ff55;
+    }
+
+    .status {
+      font-size: 0.9em;
+      margin-bottom: 15px;
+      color: #aaa;
+      min-height: 20px;
+    }
+
+    .container {
+      display: flex;
+      gap: 40px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .motor-group {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .motor-label {
+      font-size: 1.1em;
+      font-weight: bold;
+      color: #ffd700;
+      margin-bottom: 5px;
+    }
+
+    .btn {
+      width: 120px;
+      height: 60px;
+      border: none;
+      border-radius: 12px;
+      font-size: 0.85em;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      line-height: 1.2;
+    }
+
+    .btn:active, .btn.pressed {
+      transform: scale(0.95);
+      filter: brightness(1.3);
+    }
+
+    .btn-frente-alta {
+      background: linear-gradient(135deg, #00c853, #009624);
+      color: white;
+      box-shadow: 0 4px 15px #00c85355;
+    }
+
+    .btn-frente-baixa {
+      background: linear-gradient(135deg, #66bb6a, #43a047);
+      color: white;
+      box-shadow: 0 4px 15px #66bb6a55;
+    }
+
+    .btn-re-baixa {
+      background: linear-gradient(135deg, #ef5350, #c62828);
+      color: white;
+      box-shadow: 0 4px 15px #ef535055;
+    }
+
+    .btn-re-alta {
+      background: linear-gradient(135deg, #b71c1c, #880e0e);
+      color: white;
+      box-shadow: 0 4px 15px #b71c1c55;
+    }
+
+    .separator {
+      width: 3px;
+      height: 280px;
+      background: linear-gradient(to bottom, transparent, #00d4ff, transparent);
+      border-radius: 2px;
+    }
+
+    .parar-container {
+      margin-top: 20px;
+    }
+
+    .btn-parar {
+      width: 280px;
+      height: 55px;
+      background: linear-gradient(135deg, #ff6f00, #e65100);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1.1em;
+      font-weight: bold;
+      cursor: pointer;
+      box-shadow: 0 4px 15px #ff6f0055;
+    }
+
+    .btn-parar:active {
+      transform: scale(0.95);
+      filter: brightness(1.3);
+    }
+
+    .velocidade-info {
+      display: flex;
+      gap: 40px;
+      margin-top: 15px;
+      font-size: 0.85em;
+    }
+
+    .vel-box {
+      background: #16213e;
+      padding: 8px 15px;
+      border-radius: 8px;
+      text-align: center;
+      min-width: 120px;
+    }
+
+    .vel-box span {
+      color: #00d4ff;
+      font-weight: bold;
+      font-size: 1.2em;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🤖 Controle Robô ESP32</h1>
+  <div class="status" id="status">Conectado!</div>
+
+  <div class="container">
+
+    <!-- MOTOR A (Esquerda) -->
+    <div class="motor-group">
+      <div class="motor-label">⚙️ MOTOR A</div>
+
+      <button class="btn btn-frente-alta" id="AF_A"
+        ontouchstart="pressionar('AF_A')" ontouchend="soltar('AF_A')"
+        onmousedown="pressionar('AF_A')" onmouseup="soltar('AF_A')">
+        ⬆️ FRENTE<br>RÁPIDO
+      </button>
+
+      <button class="btn btn-frente-baixa" id="AF_B"
+        ontouchstart="pressionar('AF_B')" ontouchend="soltar('AF_B')"
+        onmousedown="pressionar('AF_B')" onmouseup="soltar('AF_B')">
+        ⬆️ FRENTE<br>DEVAGAR
+      </button>
+
+      <button class="btn btn-re-baixa" id="AR_B"
+        ontouchstart="pressionar('AR_B')" ontouchend="soltar('AR_B')"
+        onmousedown="pressionar('AR_B')" onmouseup="soltar('AR_B')">
+        ⬇️ RÉ<br>DEVAGAR
+      </button>
+
+      <button class="btn btn-re-alta" id="AR_A"
+        ontouchstart="pressionar('AR_A')" ontouchend="soltar('AR_A')"
+        onmousedown="pressionar('AR_A')" onmouseup="soltar('AR_A')">
+        ⬇️ RÉ<br>RÁPIDO
+      </button>
+    </div>
+
+    <div class="separator"></div>
+
+    <!-- MOTOR B (Direita) -->
+    <div class="motor-group">
+      <div class="motor-label">⚙️ MOTOR B</div>
+
+      <button class="btn btn-frente-alta" id="BF_A"
+        ontouchstart="pressionar('BF_A')" ontouchend="soltar('BF_A')"
+        onmousedown="pressionar('BF_A')" onmouseup="soltar('BF_A')">
+        ⬆️ FRENTE<br>RÁPIDO
+      </button>
+
+      <button class="btn btn-frente-baixa" id="BF_B"
+        ontouchstart="pressionar('BF_B')" ontouchend="soltar('BF_B')"
+        onmousedown="pressionar('BF_B')" onmouseup="soltar('BF_B')">
+        ⬆️ FRENTE<br>DEVAGAR
+      </button>
+
+      <button class="btn btn-re-baixa" id="BR_B"
+        ontouchstart="pressionar('BR_B')" ontouchend="soltar('BR_B')"
+        onmousedown="pressionar('BR_B')" onmouseup="soltar('BR_B')">
+        ⬇️ RÉ<br>DEVAGAR
+      </button>
+
+      <button class="btn btn-re-alta" id="BR_A"
+        ontouchstart="pressionar('BR_A')" ontouchend="soltar('BR_A')"
+        onmousedown="pressionar('BR_A')" onmouseup="soltar('BR_A')">
+        ⬇️ RÉ<br>RÁPIDO
+      </button>
+    </div>
+  </div>
+
+  <div class="parar-container">
+    <button class="btn-parar" onclick="pararTudo()">
+      🛑 PARAR TUDO
+    </button>
+  </div>
+
+  <div class="velocidade-info">
+    <div class="vel-box">
+      Motor A<br><span id="velA">0</span>
+    </div>
+    <div class="vel-box">
+      Motor B<br><span id="velB">0</span>
+    </div>
+  </div>
+
+  <script>
+    function enviar(cmd) {
+      fetch('/' + cmd)
+        .then(r => r.text())
+        .then(t => {
+          document.getElementById('status').innerText = t;
+          // Atualiza velocidades
+          let partes = t.split('|');
+          if (partes.length >= 2) {
+            document.getElementById('velA').innerText = partes[0].trim();
+            document.getElementById('velB').innerText = partes[1].trim();
+          }
+        })
+        .catch(() => {
+          document.getElementById('status').innerText = '❌ Sem conexão!';
+        });
+    }
+
+    function pressionar(id) {
+      document.getElementById(id).classList.add('pressed');
+      enviar(id + '_ON');
+    }
+
+    function soltar(id) {
+      document.getElementById(id).classList.remove('pressed');
+      enviar(id + '_OFF');
+    }
+
+    function pararTudo() {
+      enviar('PARAR');
+    }
+
+    // Previne menu de contexto no celular
+    document.addEventListener('contextmenu', e => e.preventDefault());
+  </script>
+
+</body>
+</html>

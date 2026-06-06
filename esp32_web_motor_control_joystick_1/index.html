@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Joystick ESP32</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1a2e;
+      display:  flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      font-family: Arial, sans-serif;
+      color: #eee;
+      user-select: none;
+      touch-action: none;
+      overflow: hidden;
+    }
+
+    h2 {
+      margin-bottom: 30px;
+      font-size: 20px;
+      letter-spacing: 3px;
+      color: #e94560;
+    }
+
+    /* ---- Container dos dois joysticks ---- */
+    #controllers {
+      display: flex;
+      gap: 60px;
+      align-items: center;
+    }
+
+    /* ---- Cada joystick ---- */
+    .joy-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .joy-label {
+      font-size: 13px;
+      letter-spacing: 1px;
+      color: #aaa;
+      text-transform: uppercase;
+    }
+
+    .joy-track {
+      position: relative;
+      width: 70px;
+      height: 260px;
+      border-radius: 35px;
+      background: #16213e;
+      border: 3px solid #0f3460;
+      box-shadow: 0 0 18px #0f346066;
+    }
+
+    /* linha central decorativa */
+    .joy-track::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      width: 30px;
+      height: 2px;
+      background: #0f3460;
+      border-radius: 2px;
+    }
+
+    .joy-thumb {
+      position: absolute;
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #e94560, #700);
+      box-shadow: 0 0 14px #e9456099;
+      left: 50%;
+      top:  50%;
+      transform: translate(-50%, -50%);
+      transition: top 0.05s;
+    }
+
+    /* ---- Painel de valores ---- */
+    #info {
+      margin-top: 28px;
+      display: flex;
+      gap: 20px;
+    }
+
+    .badge {
+      padding: 5px 16px;
+      border-radius: 10px;
+      background: #0f3460;
+      font-size: 13px;
+      color: #ccc;
+    }
+
+    .badge b { color: #e94560; }
+
+    /* Setas indicativas */
+    .arrows {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      color: #0f3460;
+      font-size: 18px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>🕹️ ESP32 DUAL JOYSTICK</h2>
+
+<div id="controllers">
+
+  <!-- ===== JOYSTICK ESQUERDO — Motor B ===== -->
+  <div class="joy-wrapper">
+    <div class="arrows">▲</div>
+    <div class="joy-label">Motor B</div>
+    <div class="joy-track" id="trackB">
+      <div class="joy-thumb" id="thumbB" style="top: 130px; transform: translateX(-50%);"></div>
+    </div>
+    <div class="arrows">▼</div>
+  </div>
+
+  <!-- ===== JOYSTICK DIREITO — Motor A ===== -->
+  <div class="joy-wrapper">
+    <div class="arrows">▲</div>
+    <div class="joy-label">Motor A</div>
+    <div class="joy-track" id="trackA">
+      <div class="joy-thumb" id="thumbA" style="top: 130px; transform: translateX(-50%);"></div>
+    </div>
+    <div class="arrows">▼</div>
+  </div>
+
+</div>
+
+<div id="info">
+  <div class="badge">Motor A: <b id="valA">+0</b></div>
+  <div class="badge">Motor B: <b id="valB">+0</b></div>
+</div>
+
+<script>
+  /* ================================================
+     Configurações
+  ================================================ */
+  const SEND_INTERVAL = 80;  // ms entre envios (throttle)
+  const THUMB_HALF    = 27;  // metade do thumb (54/2)
+
+  /* ================================================
+     Cria um joystick linear vertical
+     motor : 'A' ou 'B'
+     trackId / thumbId : IDs dos elementos
+  ================================================ */
+  function makeJoystick(motor, trackId, thumbId, valId) {
+    const track = document.getElementById(trackId);
+    const thumb = document.getElementById(thumbId);
+    const val   = document.getElementById(valId);
+
+    let active     = false;
+    let touchId    = null;
+    let trackTop   = 0;
+    let trackH     = 0;
+    let lastSpeed  = -999;
+    let lastDir    = '';
+    let sendTimer  = null;
+
+    const TRAVEL = 0;  // margem mínima (0 = borda interna)
+
+    /* ---- Atualiza centro da track ---- */
+    function refreshBounds() {
+      const r = track.getBoundingClientRect();
+      trackTop = r.top;
+      trackH   = r.height;
+    }
+
+    /* ---- Posiciona o thumb (0 = topo, trackH = base) ---- */
+    function setThumb(py) {
+      const minY = THUMB_HALF;
+      const maxY = trackH - THUMB_HALF;
+      py = Math.max(minY, Math.min(maxY, py));
+      thumb.style.top = py + 'px';
+      thumb.style.transform = 'translateX(-50%)';
+      return py;
+    }
+
+    /* ---- Centro da track em pixels ---- */
+    function centerPx() { return trackH / 2; }
+
+    /* ---- Calcula velocidade e direção ---- */
+    function fromPy(py) {
+      const center = centerPx();
+      const maxDelta = center - THUMB_HALF;
+      const delta = py - center;           // positivo = baixo = ré
+      const clamped = Math.max(-maxDelta, Math.min(maxDelta, delta));
+      const speed = Math.round(Math.abs(clamped) / maxDelta * 255);
+      const dir   = clamped <= 0 ? 'U' : 'D';  // cima = frente
+      return { speed, dir };
+    }
+
+    /* ---- Envia ao ESP32 ---- */
+    function send(speed, dir) {
+      if (speed === lastSpeed && dir === lastDir) return;
+      lastSpeed = speed;
+      lastDir   = dir;
+      val.textContent = (dir === 'U' ? '+' : '-') + speed;
+
+      clearTimeout(sendTimer);
+      sendTimer = setTimeout(() => {
+        fetch(`/joy?m=${motor}&s=${speed}&d=${dir}`).catch(()=>{});
+      }, SEND_INTERVAL);
+    }
+
+    /* ---- Reset ao centro ---- */
+    function reset() {
+      setThumb(centerPx());
+      send(0, 'U');
+    }
+
+    /* ---- Handlers de ponteiro ---- */
+    function onPointerDown(e) {
+      if (active) return;
+      e.preventDefault();
+      active  = true;
+      touchId = e.pointerId ?? null;
+      refreshBounds();
+      track.setPointerCapture && track.setPointerCapture(e.pointerId);
+      const py = (e.clientY - trackTop);
+      const { speed, dir } = fromPy(setThumb(py));
+      send(speed, dir);
+    }
+
+    function onPointerMove(e) {
+      if (!active) return;
+      e.preventDefault();
+      const py = (e.clientY - trackTop);
+      const { speed, dir } = fromPy(setThumb(py));
+      send(speed, dir);
+    }
+
+    function onPointerUp(e) {
+      if (!active) return;
+      active  = false;
+      touchId = null;
+      reset();
+    }
+
+    track.addEventListener('pointerdown', onPointerDown);
+    track.addEventListener('pointermove', onPointerMove);
+    track.addEventListener('pointerup',   onPointerUp);
+    track.addEventListener('pointercancel', onPointerUp);
+
+    /* Inicia centrado */
+    refreshBounds();
+    reset();
+  }
+
+  /* ================================================
+     Inicializa os dois joysticks
+     Motor B = esquerdo  (eixo X anterior)
+     Motor A = direito   (eixo Y anterior)
+  ================================================ */
+  makeJoystick('B', 'trackB', 'thumbB', 'valB');
+  makeJoystick('A', 'trackA', 'thumbA', 'valA');
+</script>
+
+</body></html>
